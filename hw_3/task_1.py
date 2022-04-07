@@ -2,6 +2,7 @@ from bs4 import BeautifulSoup as bs
 import requests
 from pprint import pprint
 from pymongo import MongoClient as MC
+import re
 
 def get_salary(salary):
     if salary == False:
@@ -35,29 +36,32 @@ def get_val_pages(dom):
     
     return val_pages
 
-def add_new_vac(dom, base_url, page): 
+def add_new_vac(dom, base_url, page, db_name, key_word): 
     """Получаем словарь с инфой о предложениях"""
-    vacancies = dom.find_all('div', {'class':'vacancy-serp-item'})
-    # vacancies_data = {}
-    numb = 1
-    vacs = connect_db().vacancies
+    all_vacancies = dom.find_all('div', {'class':'vacancy-serp-item'})
+    vacs = connect_db(db_name).vacancies
 
-    for vac in vacancies:
-        vac_link_a = vac.find('a', {'class':'bloko-link'})
-        vac_name = vac_link_a.getText()
-        vac_link = vac_link_a['href']
-
+    for vac in all_vacancies:
         try:
-            salary = vac.find('span', {'class':'bloko-header-section-3'}).getText()
-            vac_salary = get_salary(salary)
-        except:
-            vac_salary = get_salary(False)
+            vac_link_a = vac.find('a', {'class':'bloko-link'})
+            vac_name = vac_link_a.getText()
+            vac_link = vac_link_a['href']
+            vac_id = re.compile(r'[\/]\d*[\?]').findall(vac_link)[0][1:-1]
 
-        doc = { "_id" : vac_name, "vac_site" : base_url, "vac_link" : vac_link, "vac_salary" : vac_salary}
-        vac_id = vacs.find_one({"_id" : doc["_id"]})
-        
-        if not vac_id:
-            vacs.insert_one(doc)
+            try:
+                salary = vac.find('span', {'class':'bloko-header-section-3'}).getText()
+                vac_salary = get_salary(salary)
+            except:
+                vac_salary = get_salary(False)
+
+            doc = { "_id" : vac_id, "vac_name" : vac_name, "vac_site" : base_url, "vac_link" : vac_link, "vac_salary" : vac_salary, "page" : page, "key_word" : key_word}
+            vac_id = vacs.find_one({"_id" : doc["_id"]})
+
+            if not vac_id:
+                vacs.insert_one(doc)
+        except:
+            pass
+
 
 def get_url_for_search_work(search_text, page = 0):
     """Получаем ссылку на поиск вакансий по запросу"""
@@ -73,10 +77,9 @@ def get_url_for_search_work(search_text, page = 0):
     
     return [search_page, user_headers, base_url]
 
-def connect_db():
+def connect_db(db_name):
     client = MC('127.0.0.1', 27017)
-    db = client['work']
-    # vacs = db.vacancies
+    db = client[db_name]
     # не нашла способ проверить подключение к бд.
 
     return db
@@ -85,22 +88,39 @@ def get_dom(search_text, val_page = 0):
     url = get_url_for_search_work(search_text, val_page)
     response_site = requests.get(url[0], headers=url[1])
     dom = bs(response_site.text, 'html.parser')
-    pprint(url)
+
     return dom
+
+def get_vac_with_salary(db, wish_salary, key_word):
+    vacs = connect_db(db).vacancies
+    # doc = vacs.find({'$or': [
+    #     {'key_word' : key_word, 'vac_salary'['min'] : {'$gte': wish_salary}}, 
+    #     {'key_word' : key_word, 'vac_salary'['max'] : {'$lte': wish_salary}}
+    # ]})
+
+    
+    for d in vacs.find({'key_word' : key_word, 'vac_salary'['min'] : {'$gte': wish_salary}, 'vac_salary'['min'] : {'$exists' : True}}):
+        print(d)
+    # return(doc)
+
 
 if __name__ == '__main__':
     err_message = 'Похоже Вы ошиблись при вводе, попробуйте еще раз'
     search_text = input('Введите желаемую должность: ').replace(' ', '+')  #'data+dev'
     val_pages = get_val_pages(get_dom(search_text))
-    # connect_db()
     i = 1
-    while val_pages > i:
-        url = get_url_for_search_work(search_text, i)
-        add_new_vac(get_dom(search_text, i), url[2], val_pages)
-        i += 1
-        break
 
-    # if vac_dict:
-    #     pprint(vac_dict)
-    # else:
-    #     print(err_message)
+    # while val_pages >= i:
+    #     print(f'Wait. {i} from {val_pages}')
+    #     url = get_url_for_search_work(search_text, i)
+    #     add_new_vac(get_dom(search_text, i), url[2], val_pages, 'work', search_text)
+    #     i += 1
+
+    try:
+        wish_salary = int(input('Введите желаемую зп: '))
+        vacs = get_vac_with_salary('work', wish_salary, search_text)
+        
+        # for vac in vacs:
+        #     pprint(vac)
+    except:
+        print(err_message)
