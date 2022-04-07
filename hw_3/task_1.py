@@ -38,15 +38,14 @@ def get_val_pages(dom):
 def add_new_vac(dom, base_url, page): 
     """Получаем словарь с инфой о предложениях"""
     vacancies = dom.find_all('div', {'class':'vacancy-serp-item'})
-    vacancies_data = {}
+    # vacancies_data = {}
     numb = 1
+    vacs = connect_db().vacancies
 
     for vac in vacancies:
-        
         vac_link_a = vac.find('a', {'class':'bloko-link'})
         vac_name = vac_link_a.getText()
         vac_link = vac_link_a['href']
-        vac_site = base_url
 
         try:
             salary = vac.find('span', {'class':'bloko-header-section-3'}).getText()
@@ -54,14 +53,11 @@ def add_new_vac(dom, base_url, page):
         except:
             vac_salary = get_salary(False)
 
-        vacancies_data[f'v_{numb}_p_{page}'] = {'vac_name' : vac_name, 'vac_salary' : vac_salary, 'vac_link' : vac_link, 'vac_site' : vac_site}
+        doc = { "_id" : vac_name, "vac_site" : base_url, "vac_link" : vac_link, "vac_salary" : vac_salary}
+        vac_id = vacs.find_one({"_id" : doc["_id"]})
         
-        numb +=1
-        
-    if vacancies_data:
-        return vacancies_data
-    else: 
-        print('По запросу ничего не найдено')
+        if not vac_id:
+            vacs.insert_one(doc)
 
 def get_url_for_search_work(search_text, page = 0):
     """Получаем ссылку на поиск вакансий по запросу"""
@@ -80,26 +76,31 @@ def get_url_for_search_work(search_text, page = 0):
 def connect_db():
     client = MC('127.0.0.1', 27017)
     db = client['work']
-    vacs = db.vacancies
+    # vacs = db.vacancies
     # не нашла способ проверить подключение к бд.
+
+    return db
+
+def get_dom(search_text, val_page = 0):
+    url = get_url_for_search_work(search_text, val_page)
+    response_site = requests.get(url[0], headers=url[1])
+    dom = bs(response_site.text, 'html.parser')
+    pprint(url)
+    return dom
 
 if __name__ == '__main__':
     err_message = 'Похоже Вы ошиблись при вводе, попробуйте еще раз'
     search_text = input('Введите желаемую должность: ').replace(' ', '+')  #'data+dev'
-    url = get_url_for_search_work(search_text)
-    response_site = requests.get(url[0], headers=url[1])
-    dom = bs(response_site.text, 'html.parser')
-    val_pages = get_val_pages(dom)
+    val_pages = get_val_pages(get_dom(search_text))
+    # connect_db()
+    i = 1
+    while val_pages > i:
+        url = get_url_for_search_work(search_text, i)
+        add_new_vac(get_dom(search_text, i), url[2], val_pages)
+        i += 1
+        break
 
-    if val_pages > 0:
-        url = get_url_for_search_work(search_text, val_pages)
-        # vac_dict = get_dict_vac(dom, url[2], val_pages)
-        add_new_vac(dom, url[2], val_pages)
-    else:
-        user_page = 0
-        vac_dict = add_new_vac(dom, url[2], user_page)
-
-    if vac_dict:
-        pprint(vac_dict)
-    else:
-        print(err_message)
+    # if vac_dict:
+    #     pprint(vac_dict)
+    # else:
+    #     print(err_message)
