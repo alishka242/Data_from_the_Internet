@@ -81,7 +81,6 @@ if __name__ == '__main__':
     search_text = input('Введите желаемую должность: ').replace(' ', '+')  #'data+dev'
     url = get_url_for_search_work(search_text)
     response_site = requests.get(url[0], headers=url[1])
-
     dom = bs(response_site.text, 'html.parser')
     val_pages = get_val_pages(dom)
     vac_dict = {}
@@ -89,9 +88,11 @@ if __name__ == '__main__':
     if val_pages > 0:
         try:
             user_page = int(input(f'По данному запросу есть {val_pages} стр, какую откроем? Введите число от 1 до {val_pages}: '))
+            url = get_url_for_search_work(search_text, user_page)
+            response_site = requests.get(url[0], headers=url[1])
+            dom = bs(response_site.text, 'html.parser')
         except:
             user_page = 0
-        url = get_url_for_search_work(search_text, user_page)
         vac_dict = get_dict_vac(dom, url[2], user_page)
     else:
         user_page = 0
