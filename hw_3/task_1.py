@@ -93,15 +93,26 @@ def get_dom(search_text, val_page = 0):
 
 def get_vac_with_salary(db, wish_salary, key_word):
     vacs = connect_db(db).vacancies
+    vac_list = []
+
     # doc = vacs.find({'$or': [
     #     {'key_word' : key_word, 'vac_salary'['min'] : {'$gte': wish_salary}}, 
     #     {'key_word' : key_word, 'vac_salary'['max'] : {'$lte': wish_salary}}
     # ]})
 
+    for d in vacs.find({'key_word' : key_word}): #, 'vac_salary': {"$gt" : wish_salary}
+        #Не нашла способоа лучше.
+        
+        salary_min = d['vac_salary']['min']
+        salary_max = d['vac_salary']['max']
     
-    for d in vacs.find({'key_word' : key_word, 'vac_salary'['min'] : {'$gte': wish_salary}, 'vac_salary'['min'] : {'$exists' : True}}):
-        print(d)
-    # return(doc)
+        try:
+            if salary_min >= wish_salary or salary_max <= wish_salary:
+                vac_list.append(d)
+        except:
+            print("Ищем подходящую вакансию по запросу")
+    
+    return vac_list
 
 
 if __name__ == '__main__':
@@ -110,17 +121,15 @@ if __name__ == '__main__':
     val_pages = get_val_pages(get_dom(search_text))
     i = 1
 
-    # while val_pages >= i:
-    #     print(f'Wait. {i} from {val_pages}')
-    #     url = get_url_for_search_work(search_text, i)
-    #     add_new_vac(get_dom(search_text, i), url[2], val_pages, 'work', search_text)
-    #     i += 1
+    while val_pages >= i:
+        print(f'Wait. {i} from {val_pages}')
+        url = get_url_for_search_work(search_text, i)
+        add_new_vac(get_dom(search_text, i), url[2], val_pages, 'work', search_text)
+        i += 1
 
     try:
         wish_salary = int(input('Введите желаемую зп: '))
         vacs = get_vac_with_salary('work', wish_salary, search_text)
-        
-        # for vac in vacs:
-        #     pprint(vac)
+        pprint(vacs)
     except:
         print(err_message)
