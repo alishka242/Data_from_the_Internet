@@ -3,7 +3,6 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.action_chains import ActionChains
 import time
 from pprint import pprint
@@ -60,7 +59,7 @@ while True:
     #skrolling page
     actions = ActionChains(driver)
     actions.move_to_element(list_mess[-1]).perform()
-    time.sleep(4)
+    time.sleep(1)
     print(len(dict_mess_links))
     if last_id == last_href_in_list:
         break
@@ -68,32 +67,41 @@ while True:
         last_id = last_href_in_list
 
 
-# client = MongoClient('127.0.0.1', 27017)
-# db = client[site_name]
-# emails = db.emails
+client = MongoClient('127.0.0.1', 27017)
+time.sleep(1)
+# name_bd = user_email.split('@')[0]
+db = client['emails']
+time.sleep(1)
+emails = db['info']
 
-# for link in links:
-#     driver.get(link)
-#     time.sleep(4)
+# Для дальшейшей оптимизации, можно создать функцию, которая будет записывать данные параллельно сбору ссылок из почты. Т.е. пришла первая стадия ссылок -> вызов функции, функционал которой похож на то, что есть ниже.
+for key, val in dict_mess_links.items():
+    driver.get(val['link'])
+    time.sleep(1)
 
-#     # от кого, дата отправки, тема письма, текст письма полный
-#     from_user = find_elem("//span[@class='letter-contact']").get_attribute('title')
+    # от кого, дата отправки, тема письма, текст письма полный
+    from_user = find_elem("//span[@class='letter-contact']").get_attribute('title')
 
-#     mess_date = find_elem("//div[@class='letter__date']").text
-#     today = date.today()
-#     yesturday = f"{today.year}-{today.month}-{today.day - 1}"
-#     mess_date = mess_date.replace("Сегодня", str(today))
-#     mess_date = mess_date.replace("Вчера", yesturday)
+    mess_date = find_elem("//div[@class='letter__date']").text
+    today = date.today()
+    yesturday = f"{today.year}-{today.month}-{today.day - 1}"
+    mess_date = mess_date.replace("Сегодня", str(today))
+    mess_date = mess_date.replace("Вчера", yesturday)
 
-#     theme = find_elem("//h2[@class='thread-subject']").text
+    theme = find_elem("//h2[@class='thread-subject']").text
 
-#     mess_text = find_elem("//div[@class='letter-body']").text
+    mess_text = find_elem("//div[@class='letter-body']").text
 
-#     doc = {
-#         "_id" : f"{site_name}_{from_user}_{mess_date}",
-#         "site_url" : site_url,
-#         "from_user" : from_user,
-#         "date" : mess_date,
-#         "theme" : theme,
-#         "mess_text" : mess_text
-#     }
+    doc = {
+        "_id" : f"{site_name}_{val['id']}",
+        "site_url" : site_url,
+        "from_user" : from_user,
+        "date" : mess_date,
+        "theme" : theme,
+        "mess_text" : mess_text
+    }
+
+    emails.insert_one(doc)
+
+print('ok')
+pprint(emails)
