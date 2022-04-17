@@ -37,22 +37,26 @@ find_elem("//button[@class='base-0-2-79 primary-0-2-93']").send_keys(Keys.ENTER)
 find_elem("//input[contains(@class,'withIcon-0-2-72')]").send_keys(user_password)
 find_elem("//div[@class='submit-button-wrap']/*/button").send_keys(Keys.ENTER)
 
-#Реализация, которая в будущем может работать быстрее, если получится разобраться, как отсортировать ненужные строки. Сейчас голова не варит -_-
+#Реализация, которая в будущем может работать быстрее, если получится разобраться, как отсортировать ненужные строки. 
+# Сейчас голова не варит -_-
 # list_mess = []
 # href_list = []
 # i = 0
+# last_el = 'None'
 # # get href of messages
-# while i < 2:
+# while i < 3:
 #     #get list of links
 #     list_mess = driver.find_elements(By.XPATH, "//div[@class='ReactVirtualized__Grid__innerScrollContainer']/a[contains(@class, 'js-tooltip-direction_letter-bottom')]")
-#     last_mess = list_mess[-1].get_attribute('href')
-#     if last_mess == list_mess[-1]:
+#     last_href = list_mess[-1].get_attribute('href')
+#     if last_el == last_href:
 #         break
 
 #     #insert href in href_list
 #     for href in list_mess:
 #         href_el = href.get_attribute('href')
-#         # pprint(href_el)
+#         href_list.append(href_el)
+        
+#     pprint(href_list)
 #         # print(len(href_list))
     
 #     #skrolling page
@@ -61,7 +65,7 @@ find_elem("//div[@class='submit-button-wrap']/*/button").send_keys(Keys.ENTER)
 #     time.sleep(4)
 
 #     i +=1 
-
+#     last_el = href_list[-1]
 #     # print(len(href_list))
 
 xpath = "//div[@class='ReactVirtualized__Grid__innerScrollContainer']/a[contains(@class, 'js-tooltip-direction_letter-bottom')]"
@@ -83,4 +87,3 @@ while True:  # собираем ссылки на новости, прокруч
     time.sleep(4)
 
 links = list(set(links))  # удаляем дубликаты
-
