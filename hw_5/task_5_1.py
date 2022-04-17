@@ -1,3 +1,4 @@
+from http import client
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
@@ -6,6 +7,8 @@ from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.action_chains import ActionChains
 import time
 from pprint import pprint
+from pymongo import MongoClient
+from datetime import date
 
 user_email = 'study.ai_172@mail.ru'
 user_password = 'NextPassword172#'
@@ -16,8 +19,9 @@ driver.get('https://mail.ru/?from=logout')
 #property of driver obj is wait load
 driver.implicitly_wait(15)
 
-site_name = driver.title
-print(site_name)
+#get site name
+site_url = driver.title
+site_name = site_url.split(':')[0]
 
 def find_elem(el_xpath):
     elem = driver.find_element(By.XPATH, el_xpath)
@@ -37,53 +41,59 @@ find_elem("//button[@class='base-0-2-79 primary-0-2-93']").send_keys(Keys.ENTER)
 find_elem("//input[contains(@class,'withIcon-0-2-72')]").send_keys(user_password)
 find_elem("//div[@class='submit-button-wrap']/*/button").send_keys(Keys.ENTER)
 
-#Реализация, которая в будущем может работать быстрее, если получится разобраться, как отсортировать ненужные строки. 
-# Сейчас голова не варит -_-
-# list_mess = []
-# href_list = []
-# i = 0
-# last_el = 'None'
-# # get href of messages
-# while i < 3:
-#     #get list of links
-#     list_mess = driver.find_elements(By.XPATH, "//div[@class='ReactVirtualized__Grid__innerScrollContainer']/a[contains(@class, 'js-tooltip-direction_letter-bottom')]")
-#     last_href = list_mess[-1].get_attribute('href')
-#     if last_el == last_href:
-#         break
-
-#     #insert href in href_list
-#     for href in list_mess:
-#         href_el = href.get_attribute('href')
-#         href_list.append(href_el)
-        
-#     pprint(href_list)
-#         # print(len(href_list))
+dict_mess_links = {}
+last_id = "none"
+# get href of messages
+while True:
+    #get list of links
+    list_mess = driver.find_elements(By.XPATH, "//div[@class='ReactVirtualized__Grid__innerScrollContainer']/a[contains(@class, 'js-tooltip-direction_letter-bottom')]")
+    last_href_in_list = str(str(list_mess[-1].get_attribute('href')).split(':')[2])
     
-#     #skrolling page
-#     actions = ActionChains(driver)
-#     actions.move_to_element(list_mess[-1]).perform()
+    #insert href in dict_mess_links
+    for href in list_mess:
+        href_el = href.get_attribute('href')
+        uniq_id = str(href_el.split(':')[2])
+
+        if dict_mess_links.get(uniq_id, 'none') != uniq_id:
+            dict_mess_links[uniq_id] = {"id" : uniq_id, 'link' : href_el}
+    
+    #skrolling page
+    actions = ActionChains(driver)
+    actions.move_to_element(list_mess[-1]).perform()
+    time.sleep(4)
+    print(len(dict_mess_links))
+    if last_id == last_href_in_list:
+        break
+    else:
+        last_id = last_href_in_list
+
+
+# client = MongoClient('127.0.0.1', 27017)
+# db = client[site_name]
+# emails = db.emails
+
+# for link in links:
+#     driver.get(link)
 #     time.sleep(4)
 
-#     i +=1 
-#     last_el = href_list[-1]
-#     # print(len(href_list))
+#     # от кого, дата отправки, тема письма, текст письма полный
+#     from_user = find_elem("//span[@class='letter-contact']").get_attribute('title')
 
-xpath = "//div[@class='ReactVirtualized__Grid__innerScrollContainer']/a[contains(@class, 'js-tooltip-direction_letter-bottom')]"
+#     mess_date = find_elem("//div[@class='letter__date']").text
+#     today = date.today()
+#     yesturday = f"{today.year}-{today.month}-{today.day - 1}"
+#     mess_date = mess_date.replace("Сегодня", str(today))
+#     mess_date = mess_date.replace("Вчера", yesturday)
 
-links =[]
-last_id = None
-while True:  # собираем ссылки на новости, прокручивая список
-    letters = driver.find_elements(By.XPATH, xpath)  # сканируем все показанные
-    l = letters[-1].get_attribute('href')
-    if last_id == l:  # список показан полностью - заканчиваем сбор ссылок
-        break
+#     theme = find_elem("//h2[@class='thread-subject']").text
 
-    for letter in letters:
-        links.append(letter.get_attribute('href').split('?')[0])
+#     mess_text = find_elem("//div[@class='letter-body']").text
 
-    last_id = l
-    actions = ActionChains(driver)
-    actions.move_to_element(letters[-1]).perform()
-    time.sleep(4)
-
-links = list(set(links))  # удаляем дубликаты
+#     doc = {
+#         "_id" : f"{site_name}_{from_user}_{mess_date}",
+#         "site_url" : site_url,
+#         "from_user" : from_user,
+#         "date" : mess_date,
+#         "theme" : theme,
+#         "mess_text" : mess_text
+#     }
